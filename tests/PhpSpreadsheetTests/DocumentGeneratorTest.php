@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Calculation\Category as Cat;
 use PhpOffice\PhpSpreadsheet\Calculation\Functions;
 use PhpOffice\PhpSpreadsheet\Calculation\Logical\Operations;
 use PhpOffice\PhpSpreadsheetInfra\DocumentGenerator;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use UnexpectedValueException;
 
@@ -18,14 +19,16 @@ class DocumentGeneratorTest extends TestCase
 
     private static bool $succeededByCategory = false;
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('providerGenerateFunctionListByName')]
+    /** @param array<string, array{category: string, functionCall: array<string>|string, argumentCount: string, passCellReference?: bool, passByReference?: array<bool>, custom?: bool}> $phpSpreadsheetFunctions */
+    #[DataProvider('providerGenerateFunctionListByName')]
     public function testGenerateFunctionListByName(array $phpSpreadsheetFunctions, string $expected): void
     {
         self::assertEquals($expected, DocumentGenerator::generateFunctionListByName($phpSpreadsheetFunctions));
         self::$succeededByName = true;
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('providerGenerateFunctionListByCategory')]
+    /** @param array<string, array{category: string, functionCall: array<string>|string, argumentCount: string, passCellReference?: bool, passByReference?: array<bool>, custom?: bool}> $phpSpreadsheetFunctions */
+    #[DataProvider('providerGenerateFunctionListByCategory')]
     public function testGenerateFunctionListByCategory(array $phpSpreadsheetFunctions, string $expected): void
     {
         self::assertEquals($expected, DocumentGenerator::generateFunctionListByCategory($phpSpreadsheetFunctions));
@@ -43,6 +46,9 @@ class DocumentGeneratorTest extends TestCase
                 ],
                 <<<'EXPECTED'
                     # Function list by name
+
+                    A more compact list can be found [here](./function-list-by-name-compact.md)
+
 
                     ## A
 
@@ -160,7 +166,11 @@ class DocumentGeneratorTest extends TestCase
         $phpSpreadsheetFunctions = [
             'ABS' => ['category' => Cat::CATEGORY_MATH_AND_TRIG, 'functionCall' => 1],
         ];
-        DocumentGenerator::generateFunctionListByName($phpSpreadsheetFunctions);
+        // Phpstan is right to complain about next line,
+        // but we still need to make sure it is handled correctly at run time.
+        DocumentGenerator::generateFunctionListByName(
+            $phpSpreadsheetFunctions //* @phpstan-ignore-line
+        );
     }
 
     public function testGenerateDocuments(): void
@@ -174,11 +184,22 @@ class DocumentGeneratorTest extends TestCase
 
         self::assertNotFalse(file_put_contents(
             $directory . 'function-list-by-category.md',
-            DocumentGenerator::generateFunctionListByCategory($phpSpreadsheetFunctions)
+            DocumentGenerator::generateFunctionListByCategory(
+                $phpSpreadsheetFunctions
+            )
         ));
         self::assertNotFalse(file_put_contents(
             $directory . 'function-list-by-name.md',
-            DocumentGenerator::generateFunctionListByName($phpSpreadsheetFunctions)
+            DocumentGenerator::generateFunctionListByName(
+                $phpSpreadsheetFunctions
+            )
+        ));
+        self::assertNotFalse(file_put_contents(
+            $directory . 'function-list-by-name-compact.md',
+            DocumentGenerator::generateFunctionListByName(
+                $phpSpreadsheetFunctions,
+                true
+            )
         ));
     }
 }
